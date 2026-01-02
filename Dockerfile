@@ -9,6 +9,8 @@ RUN apt-get update && apt-get install -y \
     git \
     ffmpeg \
     libsndfile1 \
+    espeak-ng \
+    espeak-ng-data \
     && rm -rf /var/lib/apt/lists/*
 
 RUN ln -s /usr/bin/python3 /usr/bin/python
