@@ -13,10 +13,7 @@ MODEL_NAME = "tts_models/multilingual/multi-dataset/xtts_v2"
 print(f"Using device: {DEVICE}")
 print(f"Loading model: {MODEL_NAME}")
 
-tts = TTS(
-    model_name=MODEL_NAME,
-    gpu=(DEVICE == "cuda")
-)
+tts = TTS("tts_models/multilingual/multi-dataset/xtts_v2").to(DEVICE)
 
 print("XTTS model loaded successfully.")
 
