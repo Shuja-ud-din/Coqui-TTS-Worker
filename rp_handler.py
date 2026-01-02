@@ -3,35 +3,35 @@ import base64
 import tempfile
 from runpod.serverless.utils import rp_cuda
 from TTS.api import TTS
+from TTS.utils.manage import ModelManager
 
 print("Initializing Coqui TTS worker...")
 
 DEVICE = "cuda" if rp_cuda.is_available() else "cpu"
+print("Using device:", DEVICE)
 
-MODEL_NAME = "tts_models/multilingual/multi-dataset/xtts_v2"
+# Automatically agree to Coqui XTTS v2 ToS
+manager = ModelManager()
+manager.agree_to_tos("tts_models/multilingual/multi-dataset/xtts_v2")
 
-print(f"Using device: {DEVICE}")
-print(f"Loading model: {MODEL_NAME}")
+tts_engines = {}
 
-tts = TTS("tts_models/multilingual/multi-dataset/xtts_v2").to(DEVICE)
+def load_models():
+    print("Loading model -> tts_models/multilingual/multi-dataset/xtts_v2")
+    # Load XTTS v2 by model_name; TTS will handle downloading/cache
+    tts = TTS(model_name="tts_models/multilingual/multi-dataset/xtts_v2").to(DEVICE)
+    tts_engines["multi"] = tts
+    print("Model loaded successfully.")
 
-print("XTTS model loaded successfully.")
+load_models()
 
-SUPPORTED_LANGS = {"en", "ar"}
-
-def synthesize(text: str, lang: str):
-    if lang not in SUPPORTED_LANGS:
-        raise ValueError("Unsupported language")
+def synthesize(text: str, lang: str = "multi"):
+    tts = tts_engines[lang]
 
     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
         out_path = f.name
 
-    # XTTS supports language parameter directly
-    tts.tts_to_file(
-        text=text,
-        file_path=out_path,
-        language=lang
-    )
+    tts.tts_to_file(text=text, file_path=out_path)
 
     with open(out_path, "rb") as f:
         audio_bytes = f.read()
@@ -43,34 +43,26 @@ def handler(event):
     Expected input:
     {
       "input": {
-        "text": "Hello world",
-        "lang": "en"
+        "text": "Hello world"
       }
     }
     """
-    input_data = event.get("input", {})
-
+    input_data = event["input"]
     text = input_data.get("text")
-    lang = input_data.get("lang", "en")
 
     if not text:
         return {"error": "text is required"}
 
-    try:
-        audio_base64 = synthesize(text, lang)
-    except Exception as e:
-        return {"error": str(e)}
+    audio_base64 = synthesize(text)
 
     return {
         "audio": audio_base64,
         "format": "wav",
-        "lang": lang,
-        "model": MODEL_NAME
+        "lang": "multi"
     }
 
 def adjust_concurrency(current_concurrency):
-    # Safe default for XTTS on GPU
-    return 5
+    return 10
 
 if __name__ == "__main__":
     runpod.serverless.start({

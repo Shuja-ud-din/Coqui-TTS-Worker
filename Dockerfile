@@ -1,25 +1,24 @@
-FROM nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04
+FROM python:3.10-slim
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 
+# System deps (XTTS needs these)
 RUN apt-get update && apt-get install -y \
-    python3.10 \
-    python3-pip \
     git \
     ffmpeg \
-    libsndfile1 \
     espeak-ng \
-    espeak-ng-data \
+    libsndfile1 \
     && rm -rf /var/lib/apt/lists/*
 
-RUN ln -s /usr/bin/python3 /usr/bin/python
+WORKDIR /app
 
-WORKDIR /
-
+# Install Python deps first (better caching)
 COPY requirements.txt .
-RUN pip install --upgrade pip && pip install -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
-COPY rp_handler.py /
+# Copy application + model
+COPY models ./models
+COPY rp_handler.py .
 
-CMD ["python3", "-u", "rp_handler.py"]
+CMD ["python", "rp_handler.py"]
