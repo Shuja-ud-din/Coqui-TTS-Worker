@@ -8,34 +8,33 @@ print("Initializing Coqui TTS worker...")
 
 DEVICE = "cuda" if rp_cuda.is_available() else "cpu"
 
-MODELS = {
-    "en": "tts_models/en/vctk/vits",
-    "ar": "tts_models/ar/mai/tacotron2-DDC"
-}
+MODEL_NAME = "tts_models/multilingual/multi-dataset/xtts_v2"
 
-tts_engines = {}
+print(f"Using device: {DEVICE}")
+print(f"Loading model: {MODEL_NAME}")
 
-def load_models():
-    for lang, model_name in MODELS.items():
-        print(f"Loading model: {lang} -> {model_name}")
-        tts_engines[lang] = TTS(
-            model_name=model_name,
-            gpu=(DEVICE == "cuda")
-        )
+tts = TTS(
+    model_name=MODEL_NAME,
+    gpu=(DEVICE == "cuda")
+)
 
-load_models()
-print("Models loaded successfully.")
+print("XTTS model loaded successfully.")
+
+SUPPORTED_LANGS = {"en", "ar"}
 
 def synthesize(text: str, lang: str):
-    if lang not in tts_engines:
+    if lang not in SUPPORTED_LANGS:
         raise ValueError("Unsupported language")
-
-    tts = tts_engines[lang]
 
     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
         out_path = f.name
 
-    tts.tts_to_file(text=text, file_path=out_path)
+    # XTTS supports language parameter directly
+    tts.tts_to_file(
+        text=text,
+        file_path=out_path,
+        language=lang
+    )
 
     with open(out_path, "rb") as f:
         audio_bytes = f.read()
@@ -52,7 +51,7 @@ def handler(event):
       }
     }
     """
-    input_data = event["input"]
+    input_data = event.get("input", {})
 
     text = input_data.get("text")
     lang = input_data.get("lang", "en")
@@ -60,19 +59,24 @@ def handler(event):
     if not text:
         return {"error": "text is required"}
 
-    audio_base64 = synthesize(text, lang)
+    try:
+        audio_base64 = synthesize(text, lang)
+    except Exception as e:
+        return {"error": str(e)}
 
     return {
         "audio": audio_base64,
         "format": "wav",
-        "lang": lang
+        "lang": lang,
+        "model": MODEL_NAME
     }
 
 def adjust_concurrency(current_concurrency):
-    return 10
+    # Safe default for XTTS on GPU
+    return 5
 
 if __name__ == "__main__":
     runpod.serverless.start({
-        "handler": handler, 
+        "handler": handler,
         "adjust_concurrency": adjust_concurrency
     })
