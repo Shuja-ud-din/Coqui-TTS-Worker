@@ -17,8 +17,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application + model
-COPY models ./models
+# Copy application
 COPY rp_handler.py .
 
 CMD ["python", "rp_handler.py"]
