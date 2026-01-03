@@ -10,16 +10,12 @@ print("Initializing Coqui TTS worker...")
 DEVICE = "cuda" if rp_cuda.is_available() else "cpu"
 print("Using device:", DEVICE)
 
-# Automatically agree to Coqui XTTS v2 ToS
-manager = ModelManager()
-manager.agree_to_tos("tts_models/multilingual/multi-dataset/xtts_v2")
-
 tts_engines = {}
 
 def load_models():
-    print("Loading model -> tts_models/multilingual/multi-dataset/xtts_v2")
+    print("Loading model -> tts_models/deu/fairseq/vits")
     # Load XTTS v2 by model_name; TTS will handle downloading/cache
-    tts = TTS(model_name="tts_models/multilingual/multi-dataset/xtts_v2").to(DEVICE)
+    tts = TTS(model_name="tts_models/deu/fairseq/vits").to(DEVICE)
     tts_engines["multi"] = tts
     print("Model loaded successfully.")
 
